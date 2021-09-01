@@ -63,6 +63,18 @@ Controller::Controller(IPort& p_displayPort, IPort& p_foodPort, IPort& p_scorePo
     }
 }
 
+bool Controller::TailBite(Segment newHead)
+{
+    for (auto segment : m_segments) {
+            if (segment.x == newHead.x and segment.y == newHead.y) {
+                m_scorePort.send(std::make_unique<EventT<LooseInd>>());
+                return true;
+                break;
+            }
+        }
+    return false;
+}
+
 void Controller::receive(std::unique_ptr<Event> e)
 {
     try {
@@ -76,14 +88,14 @@ void Controller::receive(std::unique_ptr<Event> e)
         newHead.ttl = currentHead.ttl;
 
         bool lost = false;
-
-        for (auto segment : m_segments) {
+        lost = TailBite(newHead);
+        /*for (auto segment : m_segments) {
             if (segment.x == newHead.x and segment.y == newHead.y) {
                 m_scorePort.send(std::make_unique<EventT<LooseInd>>());
                 lost = true;
                 break;
             }
-        }
+        }*/
 
         if (not lost) {
             if (std::make_pair(newHead.x, newHead.y) == m_foodPosition) {
@@ -106,6 +118,9 @@ void Controller::receive(std::unique_ptr<Event> e)
                     }
                 }
             }
+        }
+
+        if (not lost) {
             m_segments.push_front(newHead);
             DisplayInd placeNewHead;
             placeNewHead.x = newHead.x;
@@ -120,10 +135,6 @@ void Controller::receive(std::unique_ptr<Event> e)
                     m_segments.end(),
                     [](auto const& segment){ return not (segment.ttl > 0); }),
                 m_segments.end());
-        }
-
-        if (not lost) {
-
         }
     } catch (std::bad_cast&) {
         try {

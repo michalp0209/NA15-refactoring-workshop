@@ -39,6 +39,7 @@ private:
         int y;
         int ttl;
     };
+    bool TailBite(Segment);
 
     IPort& m_displayPort;
     IPort& m_foodPort;

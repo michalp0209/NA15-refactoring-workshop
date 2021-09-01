@@ -63,7 +63,7 @@ Controller::Controller(IPort& p_displayPort, IPort& p_foodPort, IPort& p_scorePo
     }
 }
 
-bool Controller::TailBite(Segment newHead)
+bool Controller::snakeBiteItsTail(Segment newHead)
 {
     for (auto segment : m_segments) {
             if (segment.x == newHead.x and segment.y == newHead.y) {
@@ -74,6 +74,17 @@ bool Controller::TailBite(Segment newHead)
         }
     return false;
 }
+
+bool Controller::foodCollideWithSnake(FoodInd receivedFood)
+{
+    for (auto const& segment : m_segments) {
+        if (segment.x == receivedFood.x and segment.y == receivedFood.y) {
+            return true;
+        }
+    }
+    return false;
+}
+
 
 void Controller::receive(std::unique_ptr<Event> e)
 {
@@ -88,14 +99,7 @@ void Controller::receive(std::unique_ptr<Event> e)
         newHead.ttl = currentHead.ttl;
 
         bool lost = false;
-        lost = TailBite(newHead);
-        /*for (auto segment : m_segments) {
-            if (segment.x == newHead.x and segment.y == newHead.y) {
-                m_scorePort.send(std::make_unique<EventT<LooseInd>>());
-                lost = true;
-                break;
-            }
-        }*/
+        lost = snakeBiteItsTail(newHead);
 
         if (not lost) {
             if (std::make_pair(newHead.x, newHead.y) == m_foodPosition) {
@@ -148,12 +152,13 @@ void Controller::receive(std::unique_ptr<Event> e)
                 auto receivedFood = *dynamic_cast<EventT<FoodInd> const&>(*e);
 
                 bool requestedFoodCollidedWithSnake = false;
-                for (auto const& segment : m_segments) {
+                requestedFoodCollidedWithSnake = foodCollideWithSnake(receivedFood);
+                /*for (auto const& segment : m_segments) {
                     if (segment.x == receivedFood.x and segment.y == receivedFood.y) {
                         requestedFoodCollidedWithSnake = true;
                         break;
                     }
-                }
+                }*/
 
                 if (requestedFoodCollidedWithSnake) {
                     m_foodPort.send(std::make_unique<EventT<FoodReq>>());

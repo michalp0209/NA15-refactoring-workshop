@@ -39,7 +39,8 @@ private:
         int y;
         int ttl;
     };
-    bool TailBite(Segment);
+    bool snakeBiteItsTail(Segment);
+    bool foodCollideWithSnake(FoodInd);
 
     IPort& m_displayPort;
     IPort& m_foodPort;

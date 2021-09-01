@@ -41,6 +41,7 @@ private:
     };
     bool snakeBiteItsTail(Segment);
     bool foodCollideWithSnake(FoodInd);
+    bool foodCollideWithSnake(FoodResp);
 
     IPort& m_displayPort;
     IPort& m_foodPort;

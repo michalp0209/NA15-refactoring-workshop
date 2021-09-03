@@ -69,7 +69,7 @@ Controller::Controller(IPort& p_displayPort, IPort& p_foodPort, IPort& p_scorePo
         while (length--) {
             int x, y;
             istr >> x >> y;
-            m_segments->addSegment(x, y);
+            m_segments->addSegment(Position{x,y});
         }
     } else {
         throw ConfigurationError();
@@ -106,8 +106,7 @@ void Controller::removeTailSegment()
     auto tail = m_segments->removeTail();
 
     DisplayInd clearTail;
-    clearTail.position.x = tail.first;
-    clearTail.position.y = tail.second;
+    clearTail.position = tail;
     clearTail.value = Cell_FREE;
 
     m_displayPort.send(std::make_unique<EventT<DisplayInd>>(clearTail));
@@ -115,7 +114,7 @@ void Controller::removeTailSegment()
 
 void Controller::addHeadSegment(Position position)
 {
-    m_segments->addHead(position.x, position.y);
+    m_segments->addHead(position);
 
     DisplayInd placeNewHead;
     placeNewHead.position = position;
@@ -136,7 +135,7 @@ void Controller::removeTailSegmentIfNotScored(Position position)
 
 void Controller::updateSegmentsIfSuccessfullMove(Position position)
 {
-    if (m_segments->isCollision(position.x, position.y) or not m_world->contains(position.x, position.y)) {
+    if (m_segments->isCollision(position) or not m_world->contains(position.x, position.y)) {
         m_scorePort.send(std::make_unique<EventT<LooseInd>>());
     } else {
         addHeadSegment(position);
@@ -147,10 +146,7 @@ void Controller::updateSegmentsIfSuccessfullMove(Position position)
 void Controller::handleTimeoutInd()
 {
     auto newHead = m_segments->nextHead();
-    Position position;
-    position.x = newHead.first;
-    position.y = newHead.second;
-    updateSegmentsIfSuccessfullMove(position);
+    updateSegmentsIfSuccessfullMove(newHead);
 }
 
 void Controller::handleDirectionInd(std::unique_ptr<Event> e)
@@ -160,7 +156,7 @@ void Controller::handleDirectionInd(std::unique_ptr<Event> e)
 
 void Controller::updateFoodPosition(Position position, std::function<void()> clearPolicy)
 {
-    if (m_segments->isCollision(position.x, position.y) or not m_world->contains(position.x, position.y)) {
+    if (m_segments->isCollision(position) or not m_world->contains(position.x, position.y)) {
         m_foodPort.send(std::make_unique<EventT<FoodReq>>());
         return;
     }

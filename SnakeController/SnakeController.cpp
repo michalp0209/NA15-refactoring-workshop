@@ -106,13 +106,12 @@ void Controller::removeTailSegment()
     m_displayPort.send(std::make_unique<EventT<DisplayInd>>(clearTail));
 }
 
-void Controller::addHeadSegment(int x, int y)
+void Controller::addHeadSegment(Position position)
 {
-    m_segments->addHead(x, y);
+    m_segments->addHead(position.x, position.y);
 
     DisplayInd placeNewHead;
-    placeNewHead.position.x = x;
-    placeNewHead.position.y = y;
+    placeNewHead.position = position;
     placeNewHead.value = Cell_SNAKE;
 
     m_displayPort.send(std::make_unique<EventT<DisplayInd>>(placeNewHead));
@@ -128,20 +127,23 @@ void Controller::removeTailSegmentIfNotScored(int x, int y)
     }
 }
 
-void Controller::updateSegmentsIfSuccessfullMove(int x, int y)
+void Controller::updateSegmentsIfSuccessfullMove(Position position)
 {
-    if (m_segments->isCollision(x, y) or not m_world->contains(x, y)) {
+    if (m_segments->isCollision(position.x, position.y) or not m_world->contains(position.x, position.y)) {
         m_scorePort.send(std::make_unique<EventT<LooseInd>>());
     } else {
-        addHeadSegment(x, y);
-        removeTailSegmentIfNotScored(x, y);
+        addHeadSegment(position);
+        removeTailSegmentIfNotScored(position.x, position.y);
     }
 }
 
 void Controller::handleTimeoutInd()
 {
     auto newHead = m_segments->nextHead();
-    updateSegmentsIfSuccessfullMove(newHead.first, newHead.second);
+    Position position;
+    position.x = newHead.first;
+    position.y = newHead.second;
+    updateSegmentsIfSuccessfullMove(position);
 }
 
 void Controller::handleDirectionInd(std::unique_ptr<Event> e)

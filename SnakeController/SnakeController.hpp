@@ -7,6 +7,7 @@
 
 #include "IEventHandler.hpp"
 #include "SnakeInterface.hpp"
+#include "SnakePosition.hpp"
 
 class Event;
 class IPort;
@@ -51,8 +52,8 @@ private:
     void handleFoodResp(std::unique_ptr<Event>);
     void handlePauseInd(std::unique_ptr<Event>);
 
-    void updateSegmentsIfSuccessfullMove(int x, int y);
-    void addHeadSegment(int x, int y);
+    void updateSegmentsIfSuccessfullMove(Position position);
+    void addHeadSegment(Position position);
     void removeTailSegmentIfNotScored(int x, int y);
     void removeTailSegment();
 

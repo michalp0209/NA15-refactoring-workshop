@@ -9,6 +9,8 @@
 #include "SnakeSegments.hpp"
 #include "SnakeWorld.hpp"
 
+#include "SnakeDimension.hpp"
+
 namespace Snake
 {
 
@@ -34,7 +36,14 @@ Controller::Controller(IPort& p_displayPort, IPort& p_foodPort, IPort& p_scorePo
     istr >> w >> width >> height >> f >> foodX >> foodY >> s;
 
     if (w == 'W' and f == 'F' and s == 'S') {
-        m_world = std::make_unique<World>(std::make_pair(width, height), std::make_pair(foodX, foodY));
+        Dimension dimension;
+        dimension.width = width;
+        dimension.height = height;
+
+        Position position;
+        position.x = foodX;
+        position.y = foodY;
+        m_world = std::make_unique<World>(dimension, position);
 
         Direction startDirection;
         istr >> d;
@@ -70,13 +79,12 @@ Controller::Controller(IPort& p_displayPort, IPort& p_foodPort, IPort& p_scorePo
 Controller::~Controller()
 {}
 
-void Controller::sendPlaceNewFood(int x, int y)
+void Controller::sendPlaceNewFood(Position position)
 {
-    m_world->setFoodPosition(std::make_pair(x, y));
+    m_world->setFoodPosition(position);
 
     DisplayInd placeNewFood;
-    placeNewFood.position.x = x;
-    placeNewFood.position.y = y;
+    placeNewFood.position = position;
     placeNewFood.value = Cell_FOOD;
 
     m_displayPort.send(std::make_unique<EventT<DisplayInd>>(placeNewFood));
@@ -87,8 +95,7 @@ void Controller::sendClearOldFood()
     auto foodPosition = m_world->getFoodPosition();
 
     DisplayInd clearOldFood;
-    clearOldFood.position.x = foodPosition.first;
-    clearOldFood.position.y = foodPosition.second;
+    clearOldFood.position = foodPosition;
     clearOldFood.value = Cell_FREE;
 
     m_displayPort.send(std::make_unique<EventT<DisplayInd>>(clearOldFood));
@@ -117,9 +124,9 @@ void Controller::addHeadSegment(Position position)
     m_displayPort.send(std::make_unique<EventT<DisplayInd>>(placeNewHead));
 }
 
-void Controller::removeTailSegmentIfNotScored(int x, int y)
+void Controller::removeTailSegmentIfNotScored(Position position)
 {
-    if (std::make_pair(x, y) == m_world->getFoodPosition()) {
+    if (position == m_world->getFoodPosition()) {
         m_scorePort.send(std::make_unique<EventT<ScoreInd>>());
         m_foodPort.send(std::make_unique<EventT<FoodReq>>());
     } else {
@@ -133,7 +140,7 @@ void Controller::updateSegmentsIfSuccessfullMove(Position position)
         m_scorePort.send(std::make_unique<EventT<LooseInd>>());
     } else {
         addHeadSegment(position);
-        removeTailSegmentIfNotScored(position.x, position.y);
+        removeTailSegmentIfNotScored(position);
     }
 }
 
@@ -151,29 +158,29 @@ void Controller::handleDirectionInd(std::unique_ptr<Event> e)
     m_segments->updateDirection(payload<DirectionInd>(*e).direction);
 }
 
-void Controller::updateFoodPosition(int x, int y, std::function<void()> clearPolicy)
+void Controller::updateFoodPosition(Position position, std::function<void()> clearPolicy)
 {
-    if (m_segments->isCollision(x, y) or not m_world->contains(x, y)) {
+    if (m_segments->isCollision(position.x, position.y) or not m_world->contains(position.x, position.y)) {
         m_foodPort.send(std::make_unique<EventT<FoodReq>>());
         return;
     }
 
     clearPolicy();
-    sendPlaceNewFood(x, y);
+    sendPlaceNewFood(position);
 }
 
 void Controller::handleFoodInd(std::unique_ptr<Event> e)
 {
     auto receivedFood = payload<FoodInd>(*e);
 
-    updateFoodPosition(receivedFood.position.x, receivedFood.position.y, std::bind(&Controller::sendClearOldFood, this));
+    updateFoodPosition(receivedFood.position, std::bind(&Controller::sendClearOldFood, this));
 }
 
 void Controller::handleFoodResp(std::unique_ptr<Event> e)
 {
     auto requestedFood = payload<FoodResp>(*e);
 
-    updateFoodPosition(requestedFood.position.x, requestedFood.position.y, []{});
+    updateFoodPosition(requestedFood.position, []{});
 }
 
 void Controller::handlePauseInd(std::unique_ptr<Event> e)
